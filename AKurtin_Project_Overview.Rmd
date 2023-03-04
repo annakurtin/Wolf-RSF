@@ -1,0 +1,57 @@
+---
+title: "Wolf RSF Project Roadmap"
+author: "Anna Kurtin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Steps
+
+1. Gather the raw data from Lab 2
+
+2. Read through the project guidelines and decide what your goal for the project is 
+
+3. 
+
+
+## Project Goals
+
+In this synthetic lab assignment covering labs 1 – 6, you have been charged with developing a conceptual framework for modeling wolf habitat use and selection to define habitat for wolves in Colorado. Because there are no wolves in Colorado, we are going to do your best to model wolf habitat using used-available RSF models based on data from 2 wolf packs in Banff National Park, Alberta.  
+
+1.	**Framework: Prediction vs Explanation** Think about the conceptual framework of prediction versus explanation we explored with a set of ‘environmental’ and ‘biotic’ models in labs 3, 4, 5. 
+* we're wanting to predict more so than explain
+
+
+2.	Consider rationales and justifications for defining your scale of sampling at the 3rd order home range scale, and how to estimate home ranges and availability.
+* our scale is at the third order - use within the home range  **go back and check the notes**
+
+3.	Model building steps including screening for collinearity, multivariate variable reduction, etc.
+
+4.	Development of an a-prior candidate model set, or other model selection approaches. 
+
+5.	Evaluating the assumptions and goodness of fit of your models (calibration). 
+
+6.	Model validation approaches. 
+
+7.	Spatial prediction (mapping). 
+
+
+
+Format for analysis: follow along each lab and redo/copy the code to simulate it in your work
+
+Today: data preparation
+Thurs: Lab 2 & 3
+Fri: Lab 4
+Sat: Lab 6 & 6
+Sun: writing
+
+
+#Literature 
+For habitat suitability indices for prey
+Holroyd, G. L., and K. J. Van Tighem, editors. 1983. Ecological (biophysical) land classification of Banff and Jasper National Parks. Volume 3. The wildlife inventory. Canadian Wildlife Service, Edmonton.
+
+
