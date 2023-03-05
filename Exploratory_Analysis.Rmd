@@ -1,0 +1,94 @@
+---
+title: "Wolf RSF Project"
+author: "Anna Kurtin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+packages = c("ks", "here", "plotrix", "lattice", "adehabitatHR", "maptools", "mapview", "ggplot2","colorRamps", "sf", "terra", "tmap", "stars", "dplyr")
+
+source(".\\R_Scripts\\Install_Load_Packages.R")
+load_packages(packages)
+```
+
+# Reading in the data
+
+Data that we need: 
+
+- wolf used
+- wolf available
+- etc
+
+
+
+
+```{r}
+# Read in used available data from Lab 3
+wolfused <-read.csv(here::here("Data","wolfused.csv"), header = TRUE)
+wolfavail <-read.csv(here::here("Data","wolfavail.csv"), header = TRUE)
+
+wolfused_lab2<-read.csv(here::here("Data","wolfused_lab2.csv"), header = TRUE)
+```
+
+Univariate analyses
+
+```{r univariate analyses}
+# poke around with the data to see relationships
+hist(wolfused$deer_w2)
+hist(wolfused_lab2$deer_w2)
+#lab 2 seems to be the same
+hist(wolfused$elk_w2)
+hist(wolfused$moose_w2)
+hist(wolfused$sheep_w2)
+hist(wolfused$goat_w2)
+#we can see that wolves are using good deer and elk habitat, intermediate moose, and using poor sheep and goat habitat
+par(mfrow = c(3,1))
+hist(wolfused$Elevation2)
+hist(wolfused$DistFromHumanAccess2)
+hist(wolfused$DistFromHighHumanAccess2)
+```
+## Data exploration by wolf pack
+```{r}
+par(mfrow = c(1,1))
+# Plot Bow Valley
+hist(wolfused$Elevation2[wolfused$pack=="Bow Valley"],breaks=50, xlim = c(1400,2250), probability = TRUE, main="Wolf Habitat Selection", xlab="Elevation") 
+
+#Plot Red Deer
+hist(wolfused$Elevation2[wolfused$pack=="Red Deer"],breaks=50, col="darkgray",probability =TRUE, add=TRUE)
+# Add legend
+legend("topright", c("Bow Valley", "Red Deer"), fill = c("white","darkgray"),border = "black")
+```
+
+```{r}
+bowv <- wolfused %>% filter(pack == "Bow Valley")
+redd <- wolfused %>% filter(pack == "Red Deer")
+```
+
+Next the prey figures
+```{r}
+par(mfrow = c(2,3))
+multhist(list(wolfused$elk_w2[wolfused$pack=="Bow Valley"],wolfused$elk_w2[wolfused$pack=="Red Deer"]), freq = TRUE, main = "Elk HSI", legend.text = c("Bow Valley", "Red Deer"), args.legend = list(bty = "n"))
+multhist(list(wolfused$deer_w2[wolfused$pack=="Bow Valley"],wolfused$deer_w2[wolfused$pack=="Red Deer"]), freq = TRUE, main = "Deer HSI", legend.text = c("Bow Valley", "Red Deer"), args.legend = list(bty = "n"))
+multhist(list(wolfused$moose_w2[wolfused$pack=="Bow Valley"],wolfused$moose_w2[wolfused$pack=="Red Deer"]), freq = TRUE, main = "Moose HSI", legend.text = c("Bow Valley", "Red Deer"), args.legend = list(bty = "n"))
+multhist(list(wolfused$sheep_w2[wolfused$pack=="Bow Valley"],wolfused$sheep_w2[wolfused$pack=="Red Deer"]), freq = TRUE, main = "Sheep HSI", legend.text = c("Bow Valley", "Red Deer"), args.legend = list(bty = "n"))
+multhist(list(wolfused$goat_w2[wolfused$pack=="Bow Valley"],wolfused$goat_w2[wolfused$pack=="Red Deer"]), freq = TRUE, main = "Goat HSI", legend.text = c("Bow Valley", "Red Deer"), args.legend = list(bty = "n"))
+```
+
+Merge used and available datasets
+```{r}
+wolfused <-read.csv(here::here("Data","wolfused.csv"), header = TRUE)
+wolfavail <-read.csv(here::here("Data","wolfavail.csv"), header = TRUE)
+wolfkde <- rbind(wolfused, wolfavail)
+str(wolfkde)
+table(wolfkde$used, wolfkde$pack)
+table(wolfkde$used, wolfkde$deer_w2)
+
+## next we will create a new variable called usedFactor and graphically compare USED and AVAIL locations for prey
+wolfkde$usedFactor <- factor(wolfkde$used, labels=c('Available','Used'))
+str(wolfkde)
+# Stores used as a factor that it labeles in a specific way for plotting later 
+# labels don't change the actual values or how they're stored, just how they're represented.
+bow_wolf <- wolfkde %>% filter(pack == "Bow Valley")
+redv_wolf <- wolfkde %>% filter(pack == "Red Deer")
+```

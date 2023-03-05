@@ -1,25 +1,3 @@
----
-title: "Wolf RSF Project"
-author: "Anna Kurtin"
-date: "`r Sys.Date()`"
-output: html_document
----
-
-```{r setup, include=FALSE}
-packages = c("ks", "here", "plotrix", "lattice", "adehabitatHR", "maptools", "mapview", "ggplot2","colorRamps", "sf", "terra", "tmap", "stars", "dplyr")
-
-source(".\\R_Scripts\\Install_Load_Packages.R")
-load_packages(packages)
-```
-
-# Reading in the data
-
-Data that we need: 
-
-- wolf used
-- wolf available
-- etc
-
 ```{r Read in tifs}
 deer_w2 <- st_read(".\\Data\\tif_files\\deer_w2.tif")
 # error with reading in this data
@@ -264,11 +242,4 @@ crs(elk_w)
 crs(sheep_w)
 crs(goat_w)
 
-```
-
-
-```{r}
-# Read in used available data from Lab 3
-wolfused <-read.csv(here::here("Data","wolfused.csv"), header = TRUE)
-wolfavail <-read.csv(here::here("Data","wolfavail.csv"), header = TRUE)
 ```

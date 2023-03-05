@@ -39,7 +39,7 @@ In this synthetic lab assignment covering labs 1 – 6, you have been charged wi
 
 7.	Spatial prediction (mapping). 
 
-
+# Do two separate models for packs and show if they are fit better than the combined model but then talk about how for predictions sake it makes more sense to do a combined model 
 
 Format for analysis: follow along each lab and redo/copy the code to simulate it in your work
 

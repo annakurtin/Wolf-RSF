@@ -1,0 +1,50 @@
+---
+title: "Model_Building_Combined"
+author: "Anna Kurtin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r Read Packages, include = FALSE}
+#packages
+packages <- c("car", "tidyverse", "MASS", "AICcmodavg", "MuMIn", "corrgram", "GGally", "bootStepAIC", "broom","xtable")
+source(".\\R_Scripts\\Install_Load_Packages.R")
+load_packages(packages)
+
+```
+
+```{r Read Data, include=FALSE}
+# read in data
+wolfkde <- read.csv(here::here("Data","wolfkde5.csv"), header = TRUE)
+bvkde <- wolfkde %>% filter(pack == "Bow Valley")
+rdkde <- wolfkde %>% filter(pack == "Red Deer")
+```
+
+# Step 1: Investigate Univariate Relationships
+
+```{r Univariate Logistic Reg}
+# for combined data
+source(".\\R_Scripts\\Run_Univariate_Logistic_Regressions.R")
+univ_logregs(wolfkde)
+
+# for Bow Valley
+
+# for Red Deer
+
+
+```
+
+# Step 2: Screen for Colinear and Unstable Variables
+
+```{r}
+# For combined wolf data 
+cor.prob2(as.matrix(wolfkde[,c("deer_w2","elk_w2", "moose_w2", "sheep_w2", "goat_w2", "Elevation2", "DistFromHumanAccess2", "DistFromHighHumanAccess2","openConif", "closedConif", "modConif", "burn", "herb", "decid", "burn", "alpine")]))
+
+# For Bow Valley
+
+# For Red Deer
+
+
+```
+
+

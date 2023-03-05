@@ -1,0 +1,283 @@
+---
+title: "Model Building"
+author: "Anna Kurtin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+```{r}
+#packages
+packages <- c("car", "tidyverse", "MASS", "AICcmodavg", "MuMIn", "corrgram", "GGally", "bootStepAIC", "broom","xtable")
+source(".\\R_Scripts\\Install_Load_Packages.R")
+load_packages(packages)
+
+```
+
+```{r setup, include=FALSE}
+# read in data
+wolfkde <- read.csv(here::here("Data","wolfkde5.csv"), header = TRUE)
+wolfused <-read.csv(here::here("Data","wolfused.csv"), header = TRUE)
+wolfavail <-read.csv(here::here("Data","wolfavail.csv"), header = TRUE)
+wolfkde_lab3 <- rbind(wolfused, wolfavail)
+```
+
+Write out the steps in Model Building 
+
+We're trying to build a conceptual model for modeling wolf habitat use and selection to define habitat for wolves in Colorado 
+
+
+Steps in Model Building:
+
+1. Look at the data and build a conceptual model of how probability of use is affected by different variables (univariate effects)
+
+2. Go through the steps to build a model
+- write out variables of interest and how they affect probability of use by wolves 
+- screen for colinearity 
+- watch for influential points and outliers
+- build one for each pack and for the packs combined
+
+3. Lab 6: Evaluate your model's predictive powers 
+
+# Part 1: Univariate Regression and Colinearity Screening
+
+### Univariate logistic regression
+```{r Fitting Univariate Models}
+# effect of elevation
+elev_univmod <- glm(used ~ Elevation2, 
+                    family = binomial(logit),
+                    data = wolfkde)
+summary(elev_univmod)
+# to transform coefficients into odds ratio:
+exp(coefficients(elev_univmod))
+# Line 400 in Lab 3zx0
+# plot it
+ggplot(wolfkde, aes(x=Elevation2, y=used)) + geom_point() + stat_smooth(method="glm", method.args = list(family="binomial")) + labs(title = "Elevation Univariate Log Reg")
+
+
+# effect of human access
+human_univmod <- glm(used ~ DistFromHumanAccess2, 
+                    family = binomial(logit),
+                    data = wolfkde)
+summary(human_univmod)
+# to transform coefficients into odds ratio:
+exp(coefficients(human_univmod))
+# plot it
+ggplot(wolfkde, aes(x=DistFromHumanAccess2, y=used)) + geom_point() + stat_smooth(method="glm", method.args = list(family="binomial")) + labs(title = "Human Access Univariate Log Reg")
+
+# effect of high human access
+highhuman_univmod <- glm(used ~ DistFromHighHumanAccess2, 
+                    family = binomial(logit),
+                    data = wolfkde)
+summary(highhuman_univmod)
+# to transform coefficients into odds ratio:
+exp(coefficients(human_univmod))
+# plot it
+ggplot(wolfkde, aes(x=DistFromHighHumanAccess2, y=used)) + geom_point() + stat_smooth(method="glm", method.args = list(family="binomial")) + labs(title = "High Human Access Univariate Log Reg")
+
+# ungulate H.S.I. models
+# Sheep
+sheep <- glm(used ~ sheep_w2, family=binomial(logit), data=wolfkde)
+summary(sheep)
+# get odds ratio
+exp(coef(sheep))
+# plot it
+ggplot(wolfkde, aes(x=sheep_w2, y=used)) + geom_point() + stat_smooth(method="glm", method.args = list(family="binomial")) + labs(title = "Sheep Univariate Log Reg")
+
+# Deer
+deer <- glm(used ~ deer_w2, family=binomial(logit), data=wolfkde)
+summary(deer)
+# get odds ratio 
+exp(coef(deer))
+#2.85 times - strong effects, wolf prob of use increases by 2.85 for each increse in HSI for deer
+# plot it
+ggplot(wolfkde, aes(x=deer_w2, y=used)) + geom_point() + stat_smooth(method="glm", method.args = list(family="binomial")) + labs(title = "Deer Univariate Log Reg")
+
+# Elk
+elk <- glm(used ~ elk_w2, family=binomial(logit), data=wolfkde)
+summary(elk)
+exp(coef(deer))
+# plot it
+ggplot(wolfkde, aes(x=elk_w2, y=used)) + geom_point() + stat_smooth(method="glm", method.args = list(family="binomial")) + labs(title = "Elk Univariate Log Reg")
+
+# Moose
+moose <- glm(used ~ moose_w2, family=binomial(logit), data=wolfkde)
+summary(moose)
+exp(coef(moose))
+# plot it
+ggplot(wolfkde, aes(x=moose_w2, y=used)) + geom_point() + stat_smooth(method="glm", method.args = list(family="binomial")) + labs(title = "Moose Univariate Log Reg")
+
+# Goat
+goat <- glm(used ~ goat_w2, family=binomial(logit), data=wolfkde)
+summary(goat)
+exp(coef(goat))
+# plot it
+ggplot(wolfkde, aes(x=goat_w2, y=used)) + geom_point() + stat_smooth(method="glm", method.args = list(family="binomial")) + labs(title = "Goat Univariate Log Reg")
+```
+
+```{r Making a Coefficient Table}
+# make a table of coefficients from the model 
+models = rbind(summary(elev_univmod)$coefficients[,1:2], summary(human_univmod)$coefficients[,1:2], summary(highhuman_univmod)$coefficients[,1:2], summary(sheep)$coefficients[,1:2], summary(goat)$coefficients[,1:2], summary(elk)$coefficients[,1:2], summary(moose)$coefficients[,1:2], summary(deer)$coefficients[,1:2])
+# Name your models
+modelnames = c("elev","disthha", "distacc", "sheep", "goat", "elk", "moose", "deer")
+# Now put all of your estimates in a pretty table with names that you'll remember!
+estimates.all = matrix(models, nrow=2*length(modelnames), ncol=2, dimnames = list(paste(rep(modelnames, each=2),c("intercept", "coefficient")), c("B", "SE")))
+# Gives you a table with b and standard error
+xtable(estimates.all)
+# export it as a latec - Jordan is presenting on flextable in the R group this semester 
+# xtable and flextable allows you to export tables to word
+plot(estimates.all)
+
+```
+
+```{r Fitting Categorical Models}
+# logistic regression with categorical variables:
+wolfkde[,"landcov.f"] <- as.factor(wolfkde$landcov.f)
+class(wolfkde$landcov.f)
+#469
+contrasts(wolfkde$landcov.f) = contr.treatment(13)
+
+# Do logistic regression with categories
+oc = glm(used~I(landcov.f=="Open Conifer"),data=wolfkde, family = binomial(logit))
+summary(oc)
+
+# Now do the full model 
+full = glm(used~I(landcov.f), data=wolfkde, family = binomial(logit))
+summary(full)
+```
+
+
+### Test for colinearity and confounding
+- generally a rho from cor.test of 0.3 to 0.7 is too confounded
+-look for unstable coefficients: a coefficient is unstable when the sign changes or there is a change in 20% (or in ecology more like 50%) of the coefficient from the logistic regression when in the presence of multiple variables
+
+Do you keep in just the variables that are stable?
+
+
+```{r}
+# testing for colinearity 
+
+cor.test(wolfkde$Elevation2, 
+         wolfkde$DistFromHighHumanAccess2)
+# correlation of .529 means that they are about twice as likely to be the same 
+# these variables are also confounded 
+
+# Look for colinearity
+summary(elev_univmod)$coefficients[,1:2]
+# coefficient is -0.005
+summary(highhuman_univmod)$coefficients[,1:2]
+# coefficient is -0.0002
+elev_highhuman <- glm(used ~ Elevation2 + DistFromHighHumanAccess2, family = binomial(logit),data = wolfkde)
+summary(elev_highhuman)$coefficients[,1:2]
+# coefficient for elevation is -0.007
+# coefficient for distance to high human access is 0.0002: sign flipping
+# coefficient for elevation is more stable than the distance to high human access 
+# what about distance to human access????????????
+
+# Screening between elk and deer
+# Just deer model
+summary(deer)$coefficients[,1:2]
+# coefficient: 1.11
+# Just elk model
+summary(elk)$coefficients[,1:2]
+# coefficient: 1.12
+deer_elk <- glm(used~deer_w2 + elk_w2, data =wolfkde, family= binomial(logit))
+# combined model 
+summary(deer_elk)$coefficients[,1:2]
+# deer coef: .74
+# elk coef: .63
+cor.test(wolfkde$deer_w2, wolfkde$elk_w2)
+
+
+# test categorical variables
+cor.test(wolfkde$alpine, wolfkde$Elevation2)
+cor.test(wolfkde$burn, wolfkde$Elevation2)
+cor.test(wolfkde$closedConif, wolfkde$Elevation2)
+cor.test(wolfkde$herb, wolfkde$Elevation2)
+cor.test(wolfkde$goat_w2, wolfkde$Elevation2)
+
+# checking multiple at the same time
+cor.prob2 <- function(X, dfr = nrow(X) - 2) {
+  R <- cor(X, use="complete.obs")
+  above <- row(R) < col(R)
+  r2 <- R[above]^2
+  Fstat <- r2 * dfr / (1 - r2)
+  R[above] <- 1 - pf(Fstat, 1, dfr)
+  Rstar = ifelse(R[above]<0.05, "***", "NS")
+  R[above]=paste(R[above],Rstar)
+  R
+}
+# test between dummy variables and other variables
+test <- cor.prob2(as.matrix(wolfkde[,c("Elevation2", "DistFromHumanAccess2", "openConif", "closedConif", "modConif", "burn", "herb", "decid", "burn", "alpine")]))
+# test between biotic and main variables
+test2 <- cor.prob2(as.matrix(wolfkde[,c("deer_w2","elk_w2", "moose_w2", "sheep_w2", "goat_w2", "Elevation2", "DistFromHumanAccess2", "DistFromHighHumanAccess2")]))
+# test between all of them
+test3 <- cor.prob2(as.matrix(wolfkde[,c("deer_w2","elk_w2", "moose_w2", "sheep_w2", "goat_w2", "Elevation2", "DistFromHumanAccess2", "DistFromHighHumanAccess2","openConif", "closedConif", "modConif", "burn", "herb", "decid", "burn", "alpine")]))
+
+
+cor.prob(as.matrix(wolfkde[,c("deer_w2","elk_w2", "moose_w2", "sheep_w2", "goat_w2", "Elevation2", "DistFromHumanAccess2", "DistFromHighHumanAccess2")]))
+# which outputs to be worried about? Anything with an absolute value greater than .3 to .5
+```
+
+There are no locations that are far from from human access and also at low elevation - group these together
+
+### testing all correlations at once 
+ggcorr: If they're too correlated (rho > .3), they can't be in the same model 
+
+vif: A value greater than 10 is an indication of potential multi-collinearity problems. As a rough guideline, values between 1 and 2 are not a major problem, but values approaching 10 should cause concern.
+
+
+```{r}
+# Test colinearity of numeric data 
+# ggcorr - I like this one best
+# can only use this with numeric data - use it to pick out which values to investigate whether they should be removed
+ggcorrplot1 <- ggcorr(wolfkde[1:9], label = TRUE)
+# check output for values that are over .3 
+
+
+
+full.model = glm(used~deer_w2 + elk_w2 +moose_w2 +sheep_w2+goat_w2+Elevation2+DistFromHumanAccess2+DistFromHighHumanAccess2, data =wolfkde, family= binomial(logit))
+# no error message about colinearity 
+summary(full.model)
+# check if your coefficients are stable or bouncing 
+
+vif(full.model)
+#line 395 in Lab 5
+
+```
+
+
+
+```{r Old Code}
+# corrgram 
+# corrgram(wolfkde[1:9], order=TRUE, lower.panel=panel.shade,
+#          upper.panel=panel.pie, text.panel=panel.txt,
+#          main="Correlations in the Wolf Data")
+
+# ggpair
+# ggpairplot<-ggpairs(wolfkde[1:9])
+# ggpairplot
+
+
+# 
+# cor.prob2 <- function(X, dfr = nrow(X) - 2) {
+#   R <- cor(X, use="complete.obs")
+#   above <- row(R) < col(R)
+#   r2 <- R[above]^2
+#   Fstat <- r2 * dfr / (1 - r2)
+#   R[above] <- 1 - pf(Fstat, 1, dfr)
+#   Rstar = ifelse(R[above]<0.05, "***", "NS")
+#   R[above]=paste(R[above],Rstar)
+#   R
+# }
+# 
+# cor.prob2(as.matrix(wolfkde[,c("deer_w2","elk_w2", "moose_w2", "sheep_w2", "goat_w2", "Elevation2", "DistFromHumanAccess2", "DistFromHighHumanAccess2")]))
+
+```
+
+
+# Using Interactions
+
+You can use interactions to break up or account for colinearity 
+
+Colinear variables of concern: 
+-elevation and distance to high human access
+-
