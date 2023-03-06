@@ -16,6 +16,7 @@ load_packages(packages)
 ```{r Read Data, include=FALSE}
 # read in data
 wolfkde <- read.csv(here::here("Data","wolfkde5.csv"), header = TRUE)
+wolfkde <- na.omit(wolfkde)
 bvkde <- wolfkde %>% filter(pack == "Bow Valley")
 rdkde <- wolfkde %>% filter(pack == "Red Deer")
 ```
@@ -27,6 +28,12 @@ rdkde <- wolfkde %>% filter(pack == "Red Deer")
 source(".\\R_Scripts\\Run_Univariate_Logistic_Regressions.R")
 univ_logregs(wolfkde)
 
+#check out interesting relationships/visualize it
+source(".\\R_Scripts\\Plot_Univariate_Regressions.R")
+make_plot(data = wolfkde, 
+          xaxis = wolfkde$goat_w2,
+          title = "Goat Univariate Regression")
+
 # for Bow Valley
 
 # for Red Deer
@@ -37,8 +44,15 @@ univ_logregs(wolfkde)
 # Step 2: Screen for Colinear and Unstable Variables
 
 ```{r}
+source(".\\R_Scripts\\Testing_Colinearity.R")
 # For combined wolf data 
-cor.prob2(as.matrix(wolfkde[,c("deer_w2","elk_w2", "moose_w2", "sheep_w2", "goat_w2", "Elevation2", "DistFromHumanAccess2", "DistFromHighHumanAccess2","openConif", "closedConif", "modConif", "burn", "herb", "decid", "burn", "alpine")]))
+cortest1 <- cor.prob2(as.matrix(wolfkde[,c("deer_w2","elk_w2", "moose_w2", "sheep_w2", "goat_w2", "Elevation2", "DistFromHumanAccess2", "DistFromHighHumanAccess2","openConif", "closedConif", "modConif", "burn", "herb", "decid", "burn", "alpine")]))
+
+# The values that we are concerned with in this model are
+## Elk, deer and moose are all collinear 
+## Elevation with elk, deer, moose, and goat
+## Elevation and disance to human access and high human access are confounded
+## distance to human access and deer, elk, and moose
 
 # For Bow Valley
 
@@ -47,4 +61,18 @@ cor.prob2(as.matrix(wolfkde[,c("deer_w2","elk_w2", "moose_w2", "sheep_w2", "goat
 
 ```
 
+### Considering interactions
+ 
+Only include interactions between the effects of a categorical and a continuous variable
+
+```{r Code for Interactions}
+# first convert the categorical variable into a factor
+wolfkde$closedConif <- as.factor(wolfkde$closedConif)
+ggplot(wolfkde, aes(x=DistFromHumanAccess2, y=used, fill=closedConif)) + stat_smooth(method="glm", method.args = list(family="binomial"), level=0.95) #+ facet_grid(closed~.)
+```
+Note, there is a bit stronger evidence of an interaction here (the lines cross), which brings us back to our original observation above. 
+
+
+## Building/fitting the model
+- Use AIC or BIC to determine the best model with stepwise model selection
 

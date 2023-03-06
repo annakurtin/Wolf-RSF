@@ -36,6 +36,7 @@ In this synthetic lab assignment covering labs 1 – 6, you have been charged wi
 5.	Evaluating the assumptions and goodness of fit of your models (calibration). 
 
 6.	Model validation approaches. 
+- cross validation to assess how well it will apply to other areas
 
 7.	Spatial prediction (mapping). 
 
@@ -48,6 +49,8 @@ Thurs: Lab 2 & 3
 Fri: Lab 4
 Sat: Lab 6 & 6
 Sun: writing
+
+Due 3/9
 
 
 #Literature 
