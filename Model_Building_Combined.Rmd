@@ -7,59 +7,178 @@ output: html_document
 
 ```{r Read Packages, include = FALSE}
 #packages
-packages <- c("car", "tidyverse", "MASS", "AICcmodavg", "MuMIn", "corrgram", "GGally", "bootStepAIC", "broom","xtable")
+packages <- c("car",
+              "tidyverse", 
+              "MASS", 
+              "AICcmodavg", 
+              "MuMIn", 
+              "corrgram", "
+              GGally", 
+              "bootStepAIC", 
+              "broom",
+              "xtable")
 source(".\\R_Scripts\\Install_Load_Packages.R")
 load_packages(packages)
 
 ```
 
+# 0.5 Read in Data
 ```{r Read Data, include=FALSE}
 # read in data
 wolfkde <- read.csv(here::here("Data","wolfkde5.csv"), header = TRUE)
-wolfkde <- na.omit(wolfkde)
-bvkde <- wolfkde %>% filter(pack == "Bow Valley")
-rdkde <- wolfkde %>% filter(pack == "Red Deer")
 ```
 
-# Step 1: Investigate Univariate Relationships
+This data has had burn and alpine combined. Justification is that wolves are likely to treat all burned habitat similarly (find a source), and they are also likely to treat all alpine habitat similarly (find a source). 
 
-```{r Univariate Logistic Reg}
-# for combined data
-source(".\\R_Scripts\\Run_Univariate_Logistic_Regressions.R")
-univ_logregs(wolfkde)
+# Scale Variables
 
-#check out interesting relationships/visualize it
-source(".\\R_Scripts\\Plot_Univariate_Regressions.R")
-make_plot(data = wolfkde, 
-          xaxis = wolfkde$goat_w2,
-          title = "Goat Univariate Regression")
+Why do we scale the variables?
+*You need to do this so that you can directly compare the coefficients.*
 
-# for Bow Valley
-
-# for Red Deer
-
-
+```{r Scaling}
+wolfkde2 <- wolfkde
+wolfkde2$deer_w2 <- scale(wolfkde$deer_w2)
+wolfkde2$moose_w2 <- scale(wolfkde$moose_w2)
+wolfkde2$elk_w2 <- scale(wolfkde$elk_w2)
+wolfkde2$sheep_w2 <- scale(wolfkde$sheep_w2)
+wolfkde2$goat_w2 <- scale(wolfkde$goat_w2)
+wolfkde2$Elevation2 <- scale(wolfkde$Elevation2)
+wolfkde2$DistFromHumanAccess2 <- scale(wolfkde$DistFromHumanAccess2)
+wolfkde2$DistFromHighHumanAccess2 <- scale(wolfkde$DistFromHighHumanAccess2)
+#wolfkde <- wolfkde %>% select(-wolf_w2)
+# not working?
+# now rename them 
+#names(wolfkde2) <- gsub("[,1]","", names(wolfkde2))
+#wolfkde2 %>% rename(deer_w2=deer_w2[,1],moose_w2=moose_w2[,1])
 ```
 
-# Step 2: Screen for Colinear and Unstable Variables
+# Separate by Pack
 
 ```{r}
-source(".\\R_Scripts\\Testing_Colinearity.R")
-# For combined wolf data 
-cortest1 <- cor.prob2(as.matrix(wolfkde[,c("deer_w2","elk_w2", "moose_w2", "sheep_w2", "goat_w2", "Elevation2", "DistFromHumanAccess2", "DistFromHighHumanAccess2","openConif", "closedConif", "modConif", "burn", "herb", "decid", "burn", "alpine")]))
-
-# The values that we are concerned with in this model are
-## Elk, deer and moose are all collinear 
-## Elevation with elk, deer, moose, and goat
-## Elevation and disance to human access and high human access are confounded
-## distance to human access and deer, elk, and moose
-
-# For Bow Valley
-
-# For Red Deer
-
-
+wolfkde2 <- na.omit(wolfkde2)
+# remove human access
+bvkde <- wolfkde2 %>% filter(pack == "Bow Valley")
+rdkde <- wolfkde2 %>% filter(pack == "Red Deer")
 ```
+
+# Step 1: Screen for Colinear and Unstable Variables and Step 2: Investigate Univariate Relationships
+
+```{r}
+# Remove everything with an absolute value greater than 0.5 
+## Justification: .3 cuts out too many variables 
+source(".\\R_Scripts\\Testing_Colinearity.R")
+# look at the colinear variables and look into which one has the lowest AIC value of the univariate comparisons
+source(".\\R_Scripts\\One_Univariate_Logistic_Regression.R")
+
+
+# For bow valley
+cortest_bv <- cor.prob2(as.matrix(bvkde[,c("deer_w2","elk_w2", "moose_w2", "sheep_w2", "goat_w2", "Elevation2", "DistFromHumanAccess2", "DistFromHighHumanAccess2","openConif", "closedConif", "modConif",   "decid", "mixed", "herb", "shrub", "water", "rockIce", "burn", "alpine")]))
+# regen gave nothing: leave that out
+# The ones that are too correlated:
+## #Deer and Elk
+## #Elk and Moose 
+## Elevation and Deer
+## #Elevation and Elk
+## #Elevation and Moose
+## Elevation and Goat
+## Deer with dist high human access
+## #Elk with dist high human access
+# rockIce with elk, deer, and moose
+# Elevation and rockIce
+## Elevation and dist to high human access - also confounded
+
+# comparison 1: Human Access vs High Human Access
+logreg(bvkde, bvkde$DistFromHumanAccess2, "Distance From Human Access")
+# AIC 1161
+logreg(bvkde, bvkde$DistFromHighHumanAccess2,"Distance From High Human Access")
+# AIC 1115 
+# Keep: High Human Access
+
+# comparison 2: elk, deer, and moose
+logreg(bvkde, bvkde$deer_w2, "Deer HSI")
+# AIC 1108
+logreg(bvkde, bvkde$elk_w2, "Elk HSI")
+# AIC 1134
+logreg(bvkde, bvkde$moose_w2, "Moose HSI")
+# AIC 1413, weakest effect
+# Keep: Deer
+
+# comparison 3: elevation and distance to high human access 
+## Justification - can't keep both of these in bc confounding as well as colinear
+logreg(bvkde, bvkde$Elevation2, "Elevation")
+# AIC 863
+logreg(bvkde, bvkde$DistFromHighHumanAccess2, "High Human Access")
+# AIC 1115 
+
+# comparison 4: rockIce with deer/moose/elk (just compare it with deer since we decided to leave that one out)
+logreg(bvkde, bvkde$rockIce, "Rock and Ice")
+# AIC 1372
+logreg(bvkde, bvkde$deer_w2, "Deer")
+# 1108
+# Keep Deer
+
+# Starting models: 
+# 1. With Deer, High Human Access, Goat, Sheep, Land Cover EXCEPT rockIce
+#2. With Deer, Elevation, Sheep, Landcover EXCEPT rockIce
+
+
+# For red deer
+cortest_rd <- cor.prob2(as.matrix(rdkde[,c("deer_w2","elk_w2", "moose_w2", "sheep_w2", "goat_w2", "Elevation2", "DistFromHumanAccess2", "DistFromHighHumanAccess2","openConif", "closedConif", "modConif",   "mixed", "herb", "shrub", "water", "rockIce", "burn", "alpine")]))
+# decid and regen have no values, remove
+# Elk, deer and moose
+# Elk and sheep
+# Elevation and deer/elk moose
+# Elevation and dist from human access (not high)
+# Distance from human access and distance from high human access not colinear but we should still not include them in the model since they're essentially the same measurement
+# Deer/Elk/Moose and rock Ice
+# Elevation and rock ice
+
+# Comparison 1: deer/elk/moose
+logreg(rdkde, rdkde$deer_w2, "Deer HSI")
+# AIC 476
+logreg(rdkde, rdkde$elk_w2, "Elk HSI")
+# AIC 465
+logreg(rdkde, rdkde$moose_w2, "Moose HSI")
+# AIC 470
+# Keep: Elk
+
+# Comparison 2: Elk and sheep
+logreg(rdkde, rdkde$sheep_w2, "Sheep HSI")
+# AIC 525, keep Elk
+
+# Comparison 3: high human access and human access
+logreg(rdkde, rdkde$DistFromHumanAccess2, "Distance From Human Access")
+# AIC 459
+logreg(rdkde, rdkde$DistFromHighHumanAccess2,"Distance From High Human Access")
+# AIC 529 
+# Keep distance to human access - why is this one so much worse?
+
+# Comparison 4: elk and elevation
+# Elk AIC 465
+logreg(rdkde, rdkde$Elevation2, "Elevation")
+# AIC 425
+
+# Comparison 5: elk and Rock ice
+# Elk AIC 465, coefficient 1
+logreg(rdkde, rdkde$rockIce, "Rock and Ice")
+# AIC 440, coefficient -4
+# can't kick out all of the prey base, keep elk in the model and kick out rock ice 
+
+# Comparison 6: elevation and rock ice 
+# Rock ice 440
+# AIC Elevation 425
+
+# Starting models
+#1: elk, sheep, goat, distance to human access, land cover EXCEPT rockIce
+#2: sheep, goat, elevation, land cover EXCEPT rockIce
+
+
+
+
+# choose elk based on the fact that it makes up most of their diet??? Look into Hebblewhite paper on this
+```
+
+
 
 ### Considering interactions
  
@@ -75,4 +194,145 @@ Note, there is a bit stronger evidence of an interaction here (the lines cross),
 
 ## Building/fitting the model
 - Use AIC or BIC to determine the best model with stepwise model selection
+- use dredging for the models once you've removed colinear variables
 
+use dredging with BIC 
+
+LINE 609
+```{r Bow Valley Model Building}
+# Bow valley
+## 1. With Deer, High Human Access, Goat, Sheep, Land Cover EXCEPT rockIce
+bv_full1 <- glm(used~deer_w2+
+                 DistFromHighHumanAccess2+
+                 goat_w2+
+                 sheep_w2+
+                 openConif+
+                 modConif+
+                 closedConif+
+                 mixed+
+                 herb+
+                 shrub+
+                 burn+
+                 alpine,
+               data = bvkde,
+               faily = binomial(logit))
+
+# stepwise model selection forwards
+
+# stepwide model selection backwards
+
+# dredging
+
+
+##2. With Deer, Elevation, Sheep, Landcover EXCEPT rockIce
+bv_full2 <- glm(used~deer_w2+
+                 Elevation2+
+                 sheep_w2+
+                 openConif+
+                 modConif+
+                 closedConif+
+                 mixed+
+                 herb+
+                 shrub+
+                 burn+
+                 alpine,
+               data = bvkde,
+               faily = binomial(logit))
+
+# stepwise model selection forwards
+
+# stepwide model selection backwards
+
+# dredging
+
+```
+
+```{r Red Deer Model Building}
+# Red deer
+##1: elk, sheep, goat, distance to human access, land cover EXCEPT rockIce
+rd_full1 <- glm(used~elk_w2+
+                 DistFromHumanAccess2+
+                 goat_w2+
+                 sheep_w2+
+                 openConif+
+                 modConif+
+                 closedConif+
+                 mixed+
+                 herb+
+                 shrub+
+                 burn+
+                 alpine,
+               data = rdkde,
+               faily = binomial(logit))
+
+# stepwise model selection forwards
+
+# stepwide model selection backwards
+
+# dredging
+
+##2: sheep, goat, elevation, land cover EXCEPT rockIce
+rd_full2 <- glm(used~Elevation2+
+                 goat_w2+
+                 sheep_w2+
+                 openConif+
+                 modConif+
+                 closedConif+
+                 mixed+
+                 herb+
+                 shrub+
+                 burn+
+                 alpine,
+               data = rdkde,
+               faily = binomial(logit))
+
+# stepwise model selection forwards
+
+# stepwide model selection backwards
+
+# dredging
+``` 
+
+
+
+he wants the biological reasoning behind things 
+dropping elevation? 
+- this is colinear with human to access 
+
+- do one for each pack and then do model averaging with spatial prediction
+
+at the end, we'll need to create a raster stack 
+
+Validate your spatial predictions with 10 equal area bins and leave one out then put wolf telemetry data back over it and see how well it works 
+
+
+
+```{r Code Graveyard}
+# for combined data
+# source(".\\R_Scripts\\Run_Univariate_Logistic_Regressions.R")
+# # Strength of univariate variables for bow valley wolves
+# univ_logregs(bvkde)
+# # Strength of univariate variables for red deer wolves 
+# #univ_logregs(rdkde)
+# # Strength of univariate variables for both packs 
+# #univ_logregs(wolfkde)
+# 
+# 
+# #check out interesting relationships/visualize it
+# source(".\\R_Scripts\\Plot_Univariate_Regressions.R")
+# make_plot(data = wolfkde, 
+#           xaxis = wolfkde$goat_w2,
+#           title = "Goat Univariate Regression")
+# 
+# 
+# # For combined wolf data 
+# cortest1 <- cor.prob2(as.matrix(wolfkde[,c("deer_w2","elk_w2", "moose_w2", "sheep_w2", "goat_w2", "Elevation2", "DistFromHumanAccess2", "DistFromHighHumanAccess2","openConif", "closedConif", "modConif", "burn", "herb", "decid", "burn", "alpine")]))
+
+# The values that we are concerned with in this model are
+## Elk, deer and moose are all collinear 
+## Elevation with elk, deer, moose, and goat
+## Elevation and disance to human access and high human access are confounded
+## distance to human access and deer, elk, and moose
+
+
+```

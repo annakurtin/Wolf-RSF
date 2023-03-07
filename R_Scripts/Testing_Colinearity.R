@@ -1,10 +1,10 @@
 ########### Testing for colinearity between  variables ############
 
 
-# Input: values of the columns you want to investigate
+# Input: a matrix of the column values you want to investigate
 
-# Ex: 
-#cor.prob2(as.matrix(wolfkde[,c("deer_w2","elk_w2", "moose_w2", "sheep_w2", "goat_w2", "Elevation2", "DistFromHumanAccess2", "DistFromHighHumanAccess2","openConif", "closedConif", "modConif", "burn", "herb", "decid", "burn", "alpine")]))
+# Example of running this function:
+# cor.prob2(as.matrix(wolfkde[,c("deer_w2","elk_w2", "moose_w2", "sheep_w2", "goat_w2", "Elevation2", "DistFromHumanAccess2", "DistFromHighHumanAccess2","openConif", "closedConif", "modConif", "burn", "herb", "decid", "burn", "alpine")]))
 
 
 
@@ -19,7 +19,6 @@ cor.prob2 <- function(X, dfr = nrow(X) - 2) {
   R[above]=paste(R[above],Rstar)
   R
 }
-
 
 
 # which outputs to be worried about? Anything with an absolute value greater than .3 to .5
