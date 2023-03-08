@@ -12,11 +12,14 @@ packages <- c("car",
               "MASS", 
               "AICcmodavg", 
               "MuMIn", 
-              "corrgram", "
-              GGally", 
+              "corrgram", 
+              "GGally", 
               "bootStepAIC", 
               "broom",
-              "xtable")
+              "xtable",
+              "sf",
+              "terra",
+              "tmap")
 source(".\\R_Scripts\\Install_Load_Packages.R")
 load_packages(packages)
 
@@ -181,18 +184,6 @@ logreg(rdkde, rdkde$rockIce, "Rock and Ice")
 
 
 
-### Considering interactions
- 
-Only include interactions between the effects of a categorical and a continuous variable
-
-```{r Code for Interactions}
-# first convert the categorical variable into a factor
-wolfkde$closedConif <- as.factor(wolfkde$closedConif)
-ggplot(wolfkde, aes(x=DistFromHumanAccess2, y=used, fill=closedConif)) + stat_smooth(method="glm", method.args = list(family="binomial"), level=0.95) #+ facet_grid(closed~.)
-```
-Note, there is a bit stronger evidence of an interaction here (the lines cross), which brings us back to our original observation above. 
-
-
 ## Building/fitting the model
 - Use AIC or BIC to determine the best model with stepwise model selection
 - use dredging for the models once you've removed colinear variables
@@ -200,191 +191,83 @@ Note, there is a bit stronger evidence of an interaction here (the lines cross),
 use dredging with BIC 
 
 LINE 609
-```{r Bow Valley Model Building}
-# Bow valley
-## 1. With Deer, High Human Access, Goat, Sheep, Land Cover EXCEPT rockIce
-bv_full1 <- glm(used~deer_w2+
-                 DistFromHighHumanAccess2+
-                 goat_w2+
-                 sheep_w2+
-                 openConif+
-                 modConif+
-                 closedConif+
-                 mixed+
-                 herb+
-                 shrub+
-                 burn+
-                 alpine,
-               data = bvkde,
-               family = binomial(logit),
-               na.action = "na.fail")
+```{r}
+# Top models Bow Valley
+bv2Top_backward <- glm(formula = used ~ deer_w2 +
+                         Elevation2 + 
+                         sheep_w2 + 
+                         modConif + 
+                         burn, 
+                       family = binomial(logit),
+                       data = bvkde)
+bv2Top_dredge <- glm(used~deer_w2+
+                       Elevation2+
+                       burn+
+                       modConif+
+                       sheep_w2, 
+                     data=bvkde,
+                     family=binomial(logit))
 
-# stepwise model selection backwards
-stepAIC(bv_full1, direction = "backward")
-bv1Top_backward <- glm(formula = used ~ deer_w2 + DistFromHighHumanAccess2 + goat_w2 + 
-    sheep_w2 + modConif + closedConif + burn, family = binomial(logit), 
-    data = bvkde)
-# AIC 893.2
-vif(bv1Top_backward) # everything looks good here, all values under 3 and nothing approaching 10
-
-# stepwise model selection forwards
-bv_null <- glm(used~1, data = bvkde, family=binomial(logit))
-stepAIC(bv_null, scope=list(upper=bv_full1, lower=bv_null), direction="forward")
-bv1Top_forward <- glm(formula = used ~ deer_w2 + DistFromHighHumanAccess2 + goat_w2 + 
-    sheep_w2 + closedConif + modConif + burn, family = binomial(logit), 
-    data = bvkde)
-# AIC 893.2
-vif(bv1Top_forward) # this looks good 
-
-# dredging
-dredge_bv1 <- dredge(bv_full1)
-head(dredge_bv1, n = 10)
-bv1Top_dredge <- glm(used~deer_w2 + DistFromHighHumanAccess2 +  goat_w2 + sheep_w2 + closedConif + modConif + burn, family = binomial(logit), data = bvkde)
-# AIC 893.3
-plot(dredge_bv1)
-# subset the top models with dAIC < 2
-get.models(dredge_bv1, subset = delta<2)
-# what does the +1 in the formula for the models mean?
-vif(bv1Top_dredge)
-# This looks good 
-
-##2. With Deer, Elevation, Sheep, Landcover EXCEPT rockIce
-bv_full2 <- glm(used~deer_w2+
-                 Elevation2+
-                 sheep_w2+
-                 openConif+
-                 modConif+
-                 closedConif+
-                 mixed+
-                 herb+
-                 shrub+
-                 burn+
-                 alpine,
-               data = bvkde,
-               family = binomial(logit),
-               na.action = "na.fail")
-
-# stepwise model selection backwards
-stepAIC(bv_full2, direction = "backward")
-bv2Top_backward <- glm(formula = used ~ deer_w2 + Elevation2 + sheep_w2 + modConif + 
-    burn, family = binomial(logit), data = bvkde)
-# AIC: 810.9
-vif(bv2Top_backward) # looks good
-# vif/variance inflation factor  is a measure of colinearity 
-
-# stepwide model selection forwards
-stepAIC(bv_null, scope=list(upper=bv_full2, lower=bv_null), direction="forward")
-bv2Top_forward <- glm(formula = used ~ Elevation2 + deer_w2 + sheep_w2 + burn + 
-    modConif, family = binomial(logit), data = bvkde)
-# AIC 810.9
-vif(bv2Top_forward) # all looks good
-
-# dredging
-dredge_bv2 <- dredge(bv_full2)
-head(dredge_bv2, n = 10)
-bv2Top_dredge <- glm(formula = used ~ deer_w2 + Elevation2 + sheep_w2 + openConif + 
-    modConif + closedConif + mixed + herb + shrub + burn + alpine, 
-    family = binomial(logit), data = bvkde, na.action = "na.fail")
-# didn't kick out any variables
-# AICc 811
-# had a worse AIC
-vif(bv2Top_dredge)
-# VARIABLES WITH ISSUES: openConif, modConif, closedConif
-# combine these with vif?
-
-
-# Second model looks better 
-## justification: since we can't include Elevation and Distance to high human access in the same model, we screen out one in each model, then exclude any variables that are colinear 
-
-# top models for bow valley:
-bv2Top_dredge
-bv2Top_forward
-bv1Top_dredge
-
-# Evaluate these with ROC curves 
+# justification: took out the first dredge model because the BIC was ~100 higher
+# justification: only used second model because the first was poor at describing the variation (AIC and BIC was higher than the second model)
 ```
 
-```{r Red Deer Model Building}
-# Red deer
-##1: elk, sheep, goat, distance to human access, land cover EXCEPT rockIce
-rd_full1 <- glm(used~elk_w2+
-                 DistFromHumanAccess2+
-                 goat_w2+
-                 sheep_w2+
-                 openConif+
-                 modConif+
-                 closedConif+
-                 mixed+
-                 herb+
-                 shrub+
-                 burn+
-                 alpine,
-               data = rdkde,
-               family = binomial(logit),
-               na.action = "na.fail")
+```{r}
+# Top Red Deer models
+rd1Top_dredge1 <- glm(used~elk_w2+
+                        DistFromHumanAccess2+
+                        burn+
+                        goat_w2+
+                        openConif,
+                      data=rdkde,
+                      family=binomial(logit))
 
-# stepwise model selection backwards
-stepAIC(rd_full1, direction = "backward")
-rd1Top_backward <- glm(formula = used ~ elk_w2 + DistFromHumanAccess2 + goat_w2 + 
-    sheep_w2 + openConif + modConif + closedConif + mixed + herb + 
-    shrub + burn + alpine, family = binomial(logit), data = rdkde)
-# AIC 397.2
-vif(rd1Top_backward) # everything looks good here, all values under 2 and nothing approaching 10
-# VARIABLES WITH ISSUES: openConif, modConif, closedConif, shrub, burn
+rd2Top_dredge <- glm(used ~ Elevation2+ 
+                       burn+  
+                       sheep_w2+ 
+                       mixed+ 
+                       openConif, 
+                     data=rdkde, 
+                     family=binomial(logit))
 
-# stepwise model selection forwards
-rd_null <- glm(used~1, data = rdkde, family=binomial(logit))
-stepAIC(rd_null, scope=list(upper=rd_full1, lower=rd_null), direction="forward")
-rd1Top_forward <- glm(formula = used ~ DistFromHumanAccess2 + elk_w2 + goat_w2 + 
-    burn + openConif + mixed + sheep_w2 + herb + shrub + closedConif + 
-    modConif + alpine, family = binomial(logit), data = rdkde)
-# AIC 397.2
-vif(rd1Top_forward) # this looks good 
-# VARIABLES WITH ISSUES: burn, openConif, shrub, closedConif, modConif
+rd2Top_forward <-glm(used ~ Elevation2+ 
+                       burn+ 
+                       sheep_w2+ 
+                       openConif+ 
+                       mixed+ 
+                       shrub+ 
+                       goat_w2+ 
+                       herb, 
+                     family = binomial(logit), 
+                     data = rdkde)
 
-# dredging
-dredge_rd1 <- dredge(rd_full1)
-head(dredge_rd1, n = 10)
-rd1Top_dredge1 <- glm(formula = used ~ DistFromHumanAccess2 + goat_w2 + 
-    sheep_w2 + openConif + modConif + closedConif + mixed + herb + 
-    shrub + burn + alpine, family = binomial(logit), data = rdkde)
-# only took out elk
-# AIC 397.6
-rd1Top_dredge2 <- glm(formula = used ~ elk_w2 + DistFromHumanAccess2 + goat_w2 + 
-    sheep_w2 + openConif + modConif + closedConif + mixed + herb + 
-    shrub + burn + alpine, family = binomial(logit), data = rdkde)
-vif(rd1Top_dredge2)
-# VARIABLES WITH ISSUES: openConif, modConif, closedConif, shrub, bun
-# subset the top models with dAIC < 2
-get.models(dredge_rd1, subset = delta<2)
-# what does the +1 in the formula for the models mean?
-
-# dredging
-
-##2: sheep, goat, elevation, land cover EXCEPT rockIce
-rd_full2 <- glm(used~Elevation2+
-                 goat_w2+
-                 sheep_w2+
-                 openConif+
-                 modConif+
-                 closedConif+
-                 mixed+
-                 herb+
-                 shrub+
-                 burn+
-                 alpine,
-               data = rdkde,
-               family = binomial(logit))
-
-# stepwise model selection forwards
-
-# stepwide model selection backwards
-
-# dredging
-``` 
+# justification: didn't include any stepAIC models from model 1 because the VIFs were problematic
+# justification: the two dredge models had close BICs so I need to validate them to determine which is best
+```
 
 
 # Validating the model
+```{r Model Validation}
+prey_lancov <- rast(".\\Data\\tif_files\\lab6Stack.tif")
+bvkde$usedFactor <-as.factor(bvkde$usedFactor)
+rdkde$usedFactor <-as.factor(rdkde$usedFactor)
+
+# cross validation
+source(".\\R_Scripts\\kxv.R")
+# this code splits your data into 5 partitions and validates the data witholding each piece
+
+# Kfolds with a 'fuzz' factor
+kxvPrintFlag=FALSE
+kxvPlotFlag=TRUE
+# this is for breaking ties - add a 1% difference in the case of a tie
+kxvFuzzFactor = 0.01
+
+# Bow Valley Models
+kf_bv1_backwards = kxvglm(bv2Top_backward$formula, data=bvkde, k=5, nbin=10) 
+kf_bv1_backwards
+## Start here 3/8
+## Lab 6 line 700
+```
 
 ROC
 
@@ -428,4 +311,14 @@ Validate your spatial predictions with 10 equal area bins and leave one out then
 ## distance to human access and deer, elk, and moose
 
 
+### Considering interactions
+ 
+# Only include interactions between the effects of a categorical and a continuous variable
+# 
+# # first convert the categorical variable into a factor
+# wolfkde$closedConif <- as.factor(wolfkde$closedConif)
+# ggplot(wolfkde, aes(x=DistFromHumanAccess2, y=used, fill=closedConif)) + stat_smooth(method="glm", method.args = list(family="binomial"), level=0.95) #+ facet_grid(closed~.)
+# 
+# Note, there is a bit stronger evidence of an interaction here (the lines cross), which brings us back to our original observation above. 
 ```
+
