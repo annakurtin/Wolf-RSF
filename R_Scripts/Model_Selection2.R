@@ -1,5 +1,9 @@
+###### MODEL BUILDING PART TWO: Eliminate Elevation from Bow Valley #####
+# justification: elevation was colinear with the prey variables so I eliminated it from the model
+
 #########Bow Valley Model Building ################
 # Bow valley
+bv_null <- glm(used~1, data = bvkde, family=binomial(logit))
 ## 1. With Deer, High Human Access, Goat, Sheep, Land Cover EXCEPT rockIce
 bv_full1 <- glm(used~deer_w2+
                   DistFromHighHumanAccess2+
@@ -21,12 +25,11 @@ bv_full1 <- glm(used~deer_w2+
 stepAIC(bv_full1, direction = "backward")
 bv1Top_backward <- glm(formula = used ~ deer_w2 + DistFromHighHumanAccess2 + goat_w2 + 
                          sheep_w2 + modConif + closedConif + burn, family = binomial(logit), 
-                       data = bvkde)
+                       data = bvkde, na.action = "na.fail")
 # AIC 893.2
 vif(bv1Top_backward) # everything looks good here, all values under 3 and nothing approaching 10
 
 # stepwise model selection forwards
-bv_null <- glm(used~1, data = bvkde, family=binomial(logit))
 stepAIC(bv_null, scope=list(upper=bv_full1, lower=bv_null), direction="forward")
 bv1Top_forward <- glm(formula = used ~ deer_w2 + DistFromHighHumanAccess2 + goat_w2 + 
                         sheep_w2 + closedConif + modConif + burn, family = binomial(logit), 
@@ -40,12 +43,7 @@ head(dredge_bv1, n = 10)
 bv1Top_dredge <- glm(used~deer_w2+DistFromHighHumanAccess2 + closedConif + modConif + sheep_w2 + goat_w2, data = bvkde, family=binomial(logit))
 # BIC 931.3
 # took out burn 
-#bv1old <- glm(used~deer_w2 + DistFromHighHumanAccess2 +  goat_w2 + sheep_w2 + closedConif + modConif + burn, family = binomial(logit), data = bvkde)
-# AIC 893.3
 plot(dredge_bv1)
-# subset the top models with dAIC < 2
-get.models(dredge_bv1, subset = delta<2)
-# what does the +1 in the formula for the models mean?
 vif(bv1Top_dredge)
 # This looks good 
 
@@ -69,43 +67,76 @@ bv_full2 <- glm(used~deer_w2+
 
 # stepwise model selection backwards
 stepAIC(bv_full2, direction = "backward")
-bv2Top_backward <- glm(formula = used ~ deer_w2 + Elevation2 + sheep_w2 + modConif + 
-                         burn, family = binomial(logit), data = bvkde)
-# AIC: 810.9
+bv2Top_backward <- glm(formula = used ~ deer_w2 + sheep_w2 + closedConif + mixed + 
+                         herb + shrub + burn + alpine, family = binomial(logit), data = bvkde, 
+                       na.action = "na.fail")
+# AIC: 981.5
 vif(bv2Top_backward) # looks good
 # vif/variance inflation factor  is a measure of colinearity 
 
 # stepwise model selection forwards
 stepAIC(bv_null, scope=list(upper=bv_full2, lower=bv_null), direction="forward")
-bv2Top_forward <- glm(formula = used ~ Elevation2 + deer_w2 + sheep_w2 + burn + 
-                        modConif, family = binomial(logit), data = bvkde)
-# AIC 810.9
+bv2Top_forward <- glm(formula = used ~ deer_w2 + sheep_w2 + closedConif + burn + 
+                        modConif + alpine, family = binomial(logit), data = bvkde)
+# AIC 980.2
 vif(bv2Top_forward) # all looks good
 
 # dredging
 dredge_bv2 <- dredge(bv_full2, rank = BIC)
 head(dredge_bv2, n = 10)
-bv2Top_dredge <- glm(used~deer_w2+Elevation2+burn+modConif+sheep_w2, data=bvkde, family=binomial(logit))
+bv2Top_dredge <- glm(used~deer_w2+sheep_w2+closedConif, data=bvkde, family=binomial(logit))
+# BIC 1006
 vif(bv2Top_dredge) # good
-#BIC 837
-#bv2old <- glm(formula = used ~ deer_w2 + Elevation2 + sheep_w2 + openConif + 
-#                       modConif + closedConif + mixed + herb + shrub + burn + alpine, 
-#                     family = binomial(logit), data = bvkde, na.action = "na.fail")
-# didn't kick out any variables
-# AICc 811
-# had a worse AIC
-vif(bv2Top_dredge)
-# VARIABLES WITH ISSUES:  modConif, closedConif
-# combine these with vif?
 
+
+bv_full3 <- glm(used~Elevation2+
+                  sheep_w2+
+                  openConif+
+                  modConif+
+                  closedConif+
+                  mixed+
+                  herb+
+                  shrub+
+                  burn+
+                  alpine,
+                data = bvkde,
+                family = binomial(logit),
+                na.action = "na.fail")
+
+
+# stepwise model selection backwards
+stepAIC(bv_full3, direction = "backward")
+bv3Top_backward <- glm(formula = used ~ Elevation2 + sheep_w2 + modConif + burn, 
+                       family = binomial(logit), data = bvkde, na.action = "na.fail")
+# AIC: 831.3
+vif(bv3Top_backward) # looks good
+
+# stepwise model selection forwards
+stepAIC(bv_null, scope=list(upper=bv_full3, lower=bv_null), direction="forward")
+bv3Top_forward <- glm(formula = used ~ Elevation2 + burn + sheep_w2 + modConif, 
+                      family = binomial(logit), data = bvkde)
+# AIC 831.3
+vif(bv2Top_forward) # all looks good
+
+# dredging
+dredge_bv3 <- dredge(bv_full3, rank = BIC)
+head(dredge_bv3, n = 10)
+bv3Top_dredge <- glm(used~Elevation2+sheep_w2+modConif+burn, data=bvkde, family=binomial(logit))
+# BIC 857.1
+bv3Top_dredge2 <- glm(used~Elevation2+sheep_w2+burn, data=bvkde, family=binomial(logit))
+# BIC 857.3
+
+vif(bv3Top_dredge) # good
+vif(bv3Top_dredge2) # good
+# they are all the same
 
 # Second model looks better 
 ## justification: since we can't include Elevation and Distance to high human access in the same model, we screen out one in each model, then exclude any variables that are colinear 
-
+# vif/variance inflation factor  is a measure of colinearity 
 # top models for bow valley:
-bv2Top_dredge
-bv2Top_forward
 bv1Top_dredge
+bv3Top_dredge
+bv3Top_forward # this one also is the second top scoring BIC
 
 # Evaluate these with ROC curves 
 

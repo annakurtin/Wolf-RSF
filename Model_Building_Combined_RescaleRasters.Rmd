@@ -1,5 +1,5 @@
 ---
-title: "Model_Building_Combined"
+title: "Model_Building_Combined_Rescale_Rasters"
 author: "Anna Kurtin"
 date: "`r Sys.Date()`"
 output: html_document
@@ -361,6 +361,7 @@ ext(kernels) <- c(xmin=546836, xmax=612093, ymin=5662036, ymax=5748911)
 
 # load in full raster from Lab6
 full_rast <- rast(".\\Data\\tif_files\\lab6Stack.tif")
+full_rast <- scale(full_rast, center=TRUE, scale=TRUE)
 #full_rast <- dropLayer(full_rast,c(6,10:19))
 full_rast <- project(full_rast,burn)
 names(full_rast)
@@ -413,23 +414,32 @@ sheep <- full_rast$SHEEP_W
 # put through each raster
 plot(full_rast$Elevation2)
 plot(bvkde, add = TRUE)
+
+
 rast_bvTop <- (exp(bvTop_coefs[1]+
-                    bvTop_coefs[2]*elevation+
-                    bvTop_coefs[3]*sheep+
+                    bvTop_coefs[2]*full_rast$Elevation2+
+                    bvTop_coefs[3]*full_rast$SHEEP_W+
                      bvTop_coefs[4]*burn))/(1+exp(bvTop_coefs[1]+
-                    bvTop_coefs[2]*elevation+
-                    bvTop_coefs[3]*sheep+
+                    bvTop_coefs[2]*full_rast$Elevation2+
+                    bvTop_coefs[3]*full_rast$SHEEP_W+
                     bvTop_coefs[4]*burn))
 
-
-exp(bvTop_coefs[1]+
-                    bvTop_coefs[2]*5000+
-                    bvTop_coefs[3]*6+
-                     bvTop_coefs[4]*1)/(1+exp(bvTop_coefs[1]+
-                    bvTop_coefs[2]*5000+
-                    bvTop_coefs[3]*6+
-                    bvTop_coefs[4]*1))
-                    
+# exp(bvTop_coefs[1]+
+#                     bvTop_coefs[2]*5000+
+#                     bvTop_coefs[3]*6+
+#                      bvTop_coefs[4]*1)/(1+exp(bvTop_coefs[1]+
+#                     bvTop_coefs[2]*5000+
+#                     bvTop_coefs[3]*6+
+#                     bvTop_coefs[4]*1))
+# 
+# rast_bvTop <- (exp(bvTop_coefs[1]+
+#                     bvTop_coefs[2]*elevation+
+#                     bvTop_coefs[3]*sheep+
+#                      bvTop_coefs[4]*burn))/(1+exp(bvTop_coefs[1]+
+#                     bvTop_coefs[2]*elevation+
+#                     bvTop_coefs[3]*sheep+
+#                     bvTop_coefs[4]*burn))
+#                     
 cats(rast_bvTop)
 plot(rast_bvTop)
 # plot your predictions
@@ -448,16 +458,23 @@ rdTop_coefs <- rdTop$coefficients
 
 # put through each raster
 
-rast_rdTop <- #exp(bvTop_coefs[1]+
-                    bvTop_coefs[2]*full_rast$Elevation2+
-                    bvTop_coefs[3]*full_rast$SHEEP_W+
-                    bvTop_coefs[4]*burn)/(1+exp(bvTop_coefs[1]+
-                    bvTop_coefs[2]*full_rast$Elevation2+
-                    bvTop_coefs[3]*full_rast$SHEEP_W+
-                    bvTop_coefs[4]*burn))
+rast_rdTop <- exp(rdTop_coefs[1]+
+                    rdTop_coefs[2]*full_rast$ELK_W+
+                    rdTop_coefs[3]*full_rast$DistFromHumanAccess2+
+                    rdTop_coefs[4]*burn+
+                    rdTop_coefs[5]*full_rast$GOAT_W+
+                    rdTop_coefs[6]*openConif)/(1+exp(rdTop_coefs[1]+
+                    rdTop_coefs[2]*full_rast$ELK_W+
+                    rdTop_coefs[3]*full_rast$DistFromHumanAccess2+
+                    rdTop_coefs[4]*burn+
+                    rdTop_coefs[5]*full_rast$GOAT_W+
+                    rdTop_coefs[6]*openConif))
 cats(rast_bvTop)
-plot(rast_bvTop, col=colorRampPalette(c("yellow","orange","red"))(255))
-#814
+plot(rast_rdTop, col=colorRampPalette(c("yellow","orange","red"))(255), ext=kernels)
+plot(kernelHR, add=TRUE, col = NA)
+plot(wolfyht, col='blue', pch = 16, add=TRUE)
+# follows use points well 
+#Line 814
 
 
 ```
@@ -465,8 +482,14 @@ plot(rast_bvTop, col=colorRampPalette(c("yellow","orange","red"))(255))
 
 ```{r Model Averaging}
 # how to do model averaging?
-#terra::mean()
+model_avg <- terra::app(c(rast_rdTop,rast_bvTop),mean)
+plot(model_avg, col=colorRampPalette(c("yellow","orange","red"))(255), ext=kernels)
+plot(kernelHR, add=TRUE, col = NA)
+plot(wolfyht, col='blue', pch = 16, add=TRUE)
 
+# looks like it's predicting our data well except for where it is in the corner - does this have high human access?
+plot(full_rast$DistFromHumanAccess2)
+# this is becuase bow valley model is mostly driven by elevation
 
 ```
 
@@ -480,45 +503,3 @@ dropping elevation?
 at the end, we'll need to create a raster stack 
 
 Validate your spatial predictions with 10 equal area bins and leave one out then put wolf telemetry data back over it and see how well it works 
-
-
-
-```{r Code Graveyard}
-# for combined data
-# source(".\\R_Scripts\\Run_Univariate_Logistic_Regressions.R")
-# # Strength of univariate variables for bow valley wolves
-# univ_logregs(bvkde)
-# # Strength of univariate variables for red deer wolves 
-# #univ_logregs(rdkde)
-# # Strength of univariate variables for both packs 
-# #univ_logregs(wolfkde)
-# 
-# 
-# #check out interesting relationships/visualize it
-# source(".\\R_Scripts\\Plot_Univariate_Regressions.R")
-# make_plot(data = wolfkde, 
-#           xaxis = wolfkde$goat_w2,
-#           title = "Goat Univariate Regression")
-# 
-# 
-# # For combined wolf data 
-# cortest1 <- cor.prob2(as.matrix(wolfkde[,c("deer_w2","elk_w2", "moose_w2", "sheep_w2", "goat_w2", "Elevation2", "DistFromHumanAccess2", "DistFromHighHumanAccess2","openConif", "closedConif", "modConif", "burn", "herb", "decid", "burn", "alpine")]))
-
-# The values that we are concerned with in this model are
-## Elk, deer and moose are all collinear 
-## Elevation with elk, deer, moose, and goat
-## Elevation and disance to human access and high human access are confounded
-## distance to human access and deer, elk, and moose
-
-
-### Considering interactions
- 
-# Only include interactions between the effects of a categorical and a continuous variable
-# 
-# # first convert the categorical variable into a factor
-# wolfkde$closedConif <- as.factor(wolfkde$closedConif)
-# ggplot(wolfkde, aes(x=DistFromHumanAccess2, y=used, fill=closedConif)) + stat_smooth(method="glm", method.args = list(family="binomial"), level=0.95) #+ facet_grid(closed~.)
-# 
-# Note, there is a bit stronger evidence of an interaction here (the lines cross), which brings us back to our original observation above. 
-```
-
