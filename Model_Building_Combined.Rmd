@@ -72,6 +72,8 @@ rdkde <- wolfkde2 %>% filter(pack == "Red Deer")
 source(".\\R_Scripts\\Testing_Colinearity.R")
 # look at the colinear variables and look into which one has the lowest AIC value of the univariate comparisons
 source(".\\R_Scripts\\One_Univariate_Logistic_Regression.R")
+source(".\\R_Scripts\\Plot_Univariate_Regressions.R")
+
 
 
 # For bow valley
@@ -119,6 +121,10 @@ logreg(bvkde, bvkde$rockIce, "Rock and Ice")
 logreg(bvkde, bvkde$deer_w2, "Deer")
 # 1108
 # Keep Deer
+
+# filling in other gaps:
+logreg(bvkde, bvkde$sheep_w2, "Sheep")
+logreg(bvkde, bvkde$alpine, "CC")
 
 # Starting models: 
 # 1. With Deer, High Human Access, Goat, Sheep, Land Cover EXCEPT rockIce

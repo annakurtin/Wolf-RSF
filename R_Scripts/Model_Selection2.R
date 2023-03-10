@@ -1,6 +1,7 @@
 ###### MODEL BUILDING PART TWO: Eliminate Elevation from Bow Valley #####
 # justification: elevation was colinear with the prey variables so I eliminated it from the model
 
+
 #########Bow Valley Model Building ################
 # Bow valley
 bv_null <- glm(used~1, data = bvkde, family=binomial(logit))

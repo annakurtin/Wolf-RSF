@@ -62,6 +62,10 @@ wolfkde2 <- na.omit(wolfkde2)
 # remove human access
 bvkde <- wolfkde2 %>% filter(pack == "Bow Valley")
 rdkde <- wolfkde2 %>% filter(pack == "Red Deer")
+
+nrow(bvkde)
+# how many used points for each pack
+nrow(rdkde %>% filter(used ==0))
 ```
 
 # Step 1: Screen for Colinear and Unstable Variables and Step 2: Investigate Univariate Relationships
@@ -305,6 +309,14 @@ bvTop <- glm(used~Elevation2+
                       data=bvkde, 
                       family=binomial(logit))
 
+summary(bvTop)
+confint(bvTop, method= "boot")
+
+
+# take a look at the confidence intervals 
+confint(bvTop, method= "boot")
+# justification: we use this because standard errors in a linear regression model don't translate to a confidence interval
+
 ```
 
 ```{r K Folds Red Deer}
@@ -331,6 +343,10 @@ rdTop <- glm(used~elk_w2+
                         openConif,
                       data=rdkde,
                       family=binomial(logit))
+summary(rdTop)
+
+# take a look at the confidence intervals 
+confint(rdTop, method= "boot")
 
 
 ```
@@ -363,24 +379,25 @@ ext(kernels) <- c(xmin=546836, xmax=612093, ymin=5662036, ymax=5748911)
 full_rast <- rast(".\\Data\\tif_files\\lab6Stack.tif")
 full_rast <- scale(full_rast, center=TRUE, scale=TRUE)
 #full_rast <- dropLayer(full_rast,c(6,10:19))
-full_rast <- project(full_rast,burn)
-names(full_rast)
-plot(full_rast$DEER_W) # good
-plot(full_rast$MOOSE_W, main = "Moose") # good
-plot(full_rast$ELK_W, main = "Elk") # good
-plot(full_rast$SHEEP_W, main = "Sheep") # good
-plot(full_rast$GOAT_W, main = "Goat") # good
-plot(full_rast$WOLF_W, main = "Wolf") # good
-plot(full_rast$Elevation2, main = "Elevation") # good I think
-plot(full_rast$DistFromHumanAccess2, main = "Dist From Human Access") # good I think
-plot(full_rast$DistFromHighHumanAccess2, main = "Dist From High Human Access") # good I think
-plot(full_rast$HABITATTYPE, main = "Habitat Type") # error with this one
+
+# names(full_rast)
+# plot(full_rast$DEER_W) # good
+# plot(full_rast$MOOSE_W, main = "Moose") # good
+# plot(full_rast$ELK_W, main = "Elk") # good
+# plot(full_rast$SHEEP_W, main = "Sheep") # good
+# plot(full_rast$GOAT_W, main = "Goat") # good
+# plot(full_rast$WOLF_W, main = "Wolf") # good
+# plot(full_rast$Elevation2, main = "Elevation") # good I think
+# plot(full_rast$DistFromHumanAccess2, main = "Dist From Human Access") # good I think
+# plot(full_rast$DistFromHighHumanAccess2, main = "Dist From High Human Access") # good I think
+# plot(full_rast$HABITATTYPE, main = "Habitat Type") # error with this one
 
 # read in landcover data
 # only use the landcover layers that you need
 landcover <- rast(".\\Data\\tif_files\\landcover16.tif")
-plot(landcover)
+#plot(landcover)
 cats(landcover)
+#par(mar=c(1,1,1,1))
 
 # separate out each land cover type and make the extent match the full raster
 alpine <- ifel(landcover == 15 | landcover == 16, 1,ifel(is.na(landcover),NA,0))
@@ -389,7 +406,7 @@ alpine <- ifel(landcover == 15 | landcover == 16, 1,ifel(is.na(landcover),NA,0))
 burn <- ifel(landcover == 12 | landcover == 13 |landcover == 14, 1, ifel(is.na(landcover),NA,0))
 ext(burn)
 #burn <- resample(burn,full_rast,method="near")
-
+full_rast <- project(full_rast,burn)
 openConif <- ifel(landcover == 1, 1, ifel(is.na(landcover),NA,0))
 openConif <- resample(openConif,full_rast,method="near")
 
