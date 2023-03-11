@@ -429,6 +429,7 @@ sheep <- full_rast$SHEEP_W
 # need to center and scale each raster
 
 # put through each raster
+#dev.off()
 plot(full_rast$Elevation2)
 plot(bvkde, add = TRUE)
 
@@ -502,7 +503,9 @@ plot(wolfyht, col='blue', pch = 16, add=TRUE)
 model_avg <- terra::app(c(rast_rdTop,rast_bvTop),mean)
 plot(model_avg, col=colorRampPalette(c("yellow","orange","red"))(255), ext=kernels)
 plot(kernelHR, add=TRUE, col = NA)
-plot(wolfyht, col='blue', pch = 16, add=TRUE)
+plot(wolfyht, col='blue', pch = 16, add=TRUE,
+        xlab="Easting",
+        ylab="Northing")
 
 # looks like it's predicting our data well except for where it is in the corner - does this have high human access?
 plot(full_rast$DistFromHumanAccess2)
