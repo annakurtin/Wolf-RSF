@@ -437,10 +437,11 @@ plot(bvkde, add = TRUE)
 rast_bvTop <- (exp(bvTop_coefs[1]+
                     bvTop_coefs[2]*full_rast$Elevation2+
                     bvTop_coefs[3]*full_rast$SHEEP_W+
-                     bvTop_coefs[4]*burn))/(1+exp(bvTop_coefs[1]+
+                    bvTop_coefs[4]*burn))/(1+exp(bvTop_coefs[1]+
                     bvTop_coefs[2]*full_rast$Elevation2+
                     bvTop_coefs[3]*full_rast$SHEEP_W+
                     bvTop_coefs[4]*burn))
+
 
 # exp(bvTop_coefs[1]+
 #                     bvTop_coefs[2]*5000+
